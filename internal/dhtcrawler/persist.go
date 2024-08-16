@@ -87,7 +87,7 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 			// Persist to disk
 			if c.saveTorrents {
 				for _, i := range is {
-					saveRawMetadataToFile(c.saveTorrentsRoot, i.infoHash.String(), i.MetaInfoBytes)
+					c.saveRawMetadataToFile(c.saveTorrentsRoot, i.infoHash.String(), i.MetaInfoBytes)
 				}
 			}
 
@@ -145,7 +145,7 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 	}
 }
 
-func saveRawMetadataToFile(baseDir string, infoHash string, rawMetaInfo []byte) error {
+func (c *crawler) saveRawMetadataToFile(baseDir string, infoHash string, rawMetaInfo []byte) error {
 	// Convert infoHash to uppercase to ensure consistency
 	infoHash = strings.ToUpper(infoHash)
 
@@ -156,6 +156,7 @@ func saveRawMetadataToFile(baseDir string, infoHash string, rawMetaInfo []byte) 
 
 	// Create the directory structure if it doesn't exist
 	if err := os.MkdirAll(directory, os.ModePerm); err != nil {
+		c.logger.Errorw("failed to create directory", "directory", directory, "error", err)
 		return fmt.Errorf("failed to create directory: %v", err)
 	}
 
@@ -165,33 +166,37 @@ func saveRawMetadataToFile(baseDir string, infoHash string, rawMetaInfo []byte) 
 
 	// Check if the final file already exists, and skip if it does
 	if _, err := os.Stat(finalFilePath); err == nil {
-		fmt.Printf("File %s already exists, skipping save.\n", finalFilePath)
+		c.logger.Debugw("File already exists, skipping save", "filePath", finalFilePath)
 		return nil
 	}
 
 	// Create and write to the temporary file
 	tempFile, err := os.Create(tempFilePath)
 	if err != nil {
+		c.logger.Errorw("failed to create temp file", "tempFilePath", tempFilePath, "error", err)
 		return fmt.Errorf("failed to create temp file: %v", err)
 	}
 	defer tempFile.Close()
 
 	_, err = tempFile.Write(rawMetaInfo)
 	if err != nil {
+		c.logger.Errorw("failed to write raw metadata to temp file", "tempFilePath", tempFilePath, "error", err)
 		return fmt.Errorf("failed to write raw metadata to temp file: %v", err)
 	}
 
 	// Ensure all data is written to disk
 	if err := tempFile.Sync(); err != nil {
+		c.logger.Errorw("failed to sync temp file", "tempFilePath", tempFilePath, "error", err)
 		return fmt.Errorf("failed to sync temp file: %v", err)
 	}
 
 	// Rename the temp file to the final file
 	if err := os.Rename(tempFilePath, finalFilePath); err != nil {
+		c.logger.Errorw("failed to rename temp file to final file", "tempFilePath", tempFilePath, "finalFilePath", finalFilePath, "error", err)
 		return fmt.Errorf("failed to rename temp file to final file: %v", err)
 	}
 
-	fmt.Printf("Successfully saved torrent file to %s\n", finalFilePath)
+	c.logger.Debugw("Successfully saved torrent file", "filePath", finalFilePath)
 	return nil
 }
 
