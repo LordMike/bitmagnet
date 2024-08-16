@@ -146,8 +146,8 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 }
 
 func saveRawMetadataToFile(baseDir string, infoHash string, rawMetaInfo []byte) error {
-	// Convert infoHash to lowercase to ensure consistency
-	infoHash = strings.ToLower(infoHash)
+	// Convert infoHash to uppercase to ensure consistency
+	infoHash = strings.ToUpper(infoHash)
 
 	// Create a two-level trie directory structure using the first 4 characters of the infoHash
 	dir1 := infoHash[:2]  // First 2 characters
