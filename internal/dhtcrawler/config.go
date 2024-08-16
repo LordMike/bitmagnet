@@ -1,8 +1,9 @@
 package dhtcrawler
 
 import (
-	adht "github.com/anacrolix/dht/v2"
 	"time"
+
+	adht "github.com/anacrolix/dht/v2"
 )
 
 type Config struct {
@@ -20,6 +21,9 @@ type Config struct {
 	SavePieces bool
 	// RescrapeThreshold is the amount of time that must pass before a torrent is rescraped to count seeders and leechers.
 	RescrapeThreshold time.Duration
+
+	SaveTorrents     bool
+	SaveTorrentsRoot string
 }
 
 func NewDefaultConfig() Config {
@@ -30,5 +34,7 @@ func NewDefaultConfig() Config {
 		SaveFilesThreshold:           100,
 		SavePieces:                   false,
 		RescrapeThreshold:            time.Hour * 24 * 30,
+		SaveTorrents:                 false,
+		SaveTorrentsRoot:             "./torrents",
 	}
 }

@@ -2,6 +2,13 @@ package dhtcrawler
 
 import (
 	"context"
+	"strings"
+	"time"
+
+	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/database/dao"
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
 	"github.com/bitmagnet-io/bitmagnet/internal/processor"
@@ -10,7 +17,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"gorm.io/gen"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 // runPersistTorrents waits on the persistTorrents channel, and persists torrents to the database in batches.
@@ -77,6 +83,15 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 				}
 			}
 			flushHashesToClassify()
+
+			// Persist to disk
+			if c.saveTorrents {
+				for _, i := range is {
+					saveRawMetadataToFile(c.saveTorrentsRoot, i.infoHash.String(), i.MetaInfoBytes)
+				}
+			}
+
+			// Persist to DB
 			if persistErr := c.dao.Transaction(func(tx *dao.Query) error {
 				if err := tx.WithContext(ctx).Torrent.Clauses(clause.OnConflict{
 					Columns: []clause.Column{{Name: string(c.dao.Torrent.InfoHash.ColumnName())}},
@@ -128,6 +143,56 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func saveRawMetadataToFile(baseDir string, infoHash string, rawMetaInfo []byte) error {
+	// Convert infoHash to lowercase to ensure consistency
+	infoHash = strings.ToLower(infoHash)
+
+	// Create a two-level trie directory structure using the first 4 characters of the infoHash
+	dir1 := infoHash[:2]  // First 2 characters
+	dir2 := infoHash[2:4] // Next 2 characters
+	directory := filepath.Join(baseDir, dir1, dir2)
+
+	// Create the directory structure if it doesn't exist
+	if err := os.MkdirAll(directory, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create directory: %v", err)
+	}
+
+	// Define the final file path and temporary file path
+	finalFilePath := filepath.Join(directory, infoHash+".torrent")
+	tempFilePath := finalFilePath + ".tmp"
+
+	// Check if the final file already exists, and skip if it does
+	if _, err := os.Stat(finalFilePath); err == nil {
+		fmt.Printf("File %s already exists, skipping save.\n", finalFilePath)
+		return nil
+	}
+
+	// Create and write to the temporary file
+	tempFile, err := os.Create(tempFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer tempFile.Close()
+
+	_, err = tempFile.Write(rawMetaInfo)
+	if err != nil {
+		return fmt.Errorf("failed to write raw metadata to temp file: %v", err)
+	}
+
+	// Ensure all data is written to disk
+	if err := tempFile.Sync(); err != nil {
+		return fmt.Errorf("failed to sync temp file: %v", err)
+	}
+
+	// Rename the temp file to the final file
+	if err := os.Rename(tempFilePath, finalFilePath); err != nil {
+		return fmt.Errorf("failed to rename temp file to final file: %v", err)
+	}
+
+	fmt.Printf("Successfully saved torrent file to %s\n", finalFilePath)
+	return nil
 }
 
 func createTorrentModel(
