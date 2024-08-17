@@ -178,8 +178,20 @@ func (c *crawler) saveRawMetadataToFile(baseDir string, infoHash string, rawMeta
 	}
 	defer tempFile.Close()
 
+	var writeErr error
+	_, writeErr = tempFile.Write([]byte("d4:info"))
+
 	_, err = tempFile.Write(rawMetaInfo)
-	if err != nil {
+	if writeErr == nil {
+		writeErr = err
+	}
+
+	_, err = tempFile.Write([]byte("e"))
+	if writeErr == nil {
+		writeErr = err
+	}
+
+	if writeErr != nil {
 		c.logger.Errorw("failed to write raw metadata to temp file", "tempFilePath", tempFilePath, "error", err)
 		return fmt.Errorf("failed to write raw metadata to temp file: %v", err)
 	}
