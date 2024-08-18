@@ -87,7 +87,7 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 			// Persist to disk
 			if c.saveTorrents {
 				for _, i := range is {
-					c.saveRawMetadataToFile(c.saveTorrentsRoot, i.infoHash.String(), i.MetaInfoBytes)
+					c.saveRawMetadataToFile(i.infoHash.String(), i.MetaInfoBytes)
 				}
 			}
 
@@ -145,14 +145,14 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 	}
 }
 
-func (c *crawler) saveRawMetadataToFile(baseDir string, infoHash string, rawMetaInfo []byte) error {
+func (c *crawler) saveRawMetadataToFile(infoHash string, rawMetaInfo []byte) error {
 	// Convert infoHash to uppercase to ensure consistency
 	infoHash = strings.ToUpper(infoHash)
 
 	// Create a two-level trie directory structure using the first 4 characters of the infoHash
 	dir1 := infoHash[:2]  // First 2 characters
 	dir2 := infoHash[2:4] // Next 2 characters
-	directory := filepath.Join(baseDir, dir1, dir2)
+	directory := filepath.Join(c.saveTorrentsRoot, dir1, dir2)
 
 	// Create the directory structure if it doesn't exist
 	if err := os.MkdirAll(directory, os.ModePerm); err != nil {
@@ -162,7 +162,7 @@ func (c *crawler) saveRawMetadataToFile(baseDir string, infoHash string, rawMeta
 
 	// Define the final file path and temporary file path
 	finalFilePath := filepath.Join(directory, infoHash+".torrent")
-	tempFilePath := finalFilePath + ".tmp"
+	tempFilePath := finalFilePath + c.saveTorrentsTempSuffix
 
 	// Check if the final file already exists, and skip if it does
 	if _, err := os.Stat(finalFilePath); err == nil {

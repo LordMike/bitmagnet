@@ -24,6 +24,8 @@ type Config struct {
 
 	SaveTorrents     bool
 	SaveTorrentsRoot string
+	// When multiple instances of dht_crawler are running, it is possible to avoid torrent corruption by setting a unique temp file suffix for each instance
+	SaveTorrentsTempSuffix string
 }
 
 func NewDefaultConfig() Config {
@@ -36,5 +38,6 @@ func NewDefaultConfig() Config {
 		RescrapeThreshold:            time.Hour * 24 * 30,
 		SaveTorrents:                 false,
 		SaveTorrentsRoot:             "./torrents",
+		SaveTorrentsTempSuffix:       ".tmp",
 	}
 }
