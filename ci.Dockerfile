@@ -37,4 +37,9 @@ RUN apk --no-cache add ca-certificates curl tzdata jq iproute2-ss
 
 COPY --link --from=app-builder /build/bitmagnet* /usr/local/bin/
 
+RUN adduser -s /bin/sh appuser; \
+    chown appuser:appuser -R /usr/local/bin
+
+USER appuser
+
 ENTRYPOINT ["/usr/local/bin/bitmagnet"]
