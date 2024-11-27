@@ -37,11 +37,13 @@ type Params struct {
 
 type Result struct {
 	fx.Out
-	Worker         worker.Worker        `group:"workers"`
-	PersistedTotal prometheus.Collector `group:"prometheus_collectors"`
+	Worker           worker.Worker                  `group:"workers"`
+	PersistedTotal   prometheus.Collector           `group:"prometheus_collectors"`
+	DhtCrawlerActive *concurrency.AtomicValue[bool] `name:"dht_crawler_active"`
 }
 
 func New(params Params) Result {
+	active := &concurrency.AtomicValue[bool]{}
 	var c crawler
 	persistedTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "bitmagnet",
@@ -54,6 +56,7 @@ func New(params Params) Result {
 			"dht_crawler",
 			fx.Hook{
 				OnStart: func(context.Context) error {
+					active.Set(true)
 					scalingFactor := int(params.Config.ScalingFactor)
 					cl, err := params.Client.Get()
 					if err != nil {
@@ -115,6 +118,7 @@ func New(params Params) Result {
 					return nil
 				},
 				OnStop: func(context.Context) error {
+					active.Set(false)
 					if c.stopped != nil {
 						close(c.stopped)
 					}
@@ -122,6 +126,7 @@ func New(params Params) Result {
 				},
 			},
 		),
-		PersistedTotal: persistedTotal,
+		PersistedTotal:   persistedTotal,
+		DhtCrawlerActive: active,
 	}
 }

@@ -31,7 +31,7 @@ type Config struct {
 func NewDefaultConfig() Config {
 	return Config{
 		ScalingFactor:                10,
-		BootstrapNodes:               adht.DefaultGlobalBootstrapHostPorts,
+		BootstrapNodes:               defaultBootstrapNodes,
 		ReseedBootstrapNodesInterval: time.Minute,
 		SaveFilesThreshold:           100,
 		SavePieces:                   false,
@@ -40,4 +40,14 @@ func NewDefaultConfig() Config {
 		SaveTorrentsRoot:             "./torrents",
 		SaveTorrentsTempSuffix:       ".tmp",
 	}
+}
+
+// https://github.com/anacrolix/dht/blob/92b36a3fa7a37a15e08684337b47d8d0fb322ab6/dht.go#L106
+var defaultBootstrapNodes = []string{
+	"router.utorrent.com:6881",
+	"router.bittorrent.com:6881",
+	"dht.transmissionbt.com:6881",
+	"dht.aelitis.com:6881",     // Vuze
+	"router.silotis.us:6881",   // IPv6
+	"dht.libtorrent.org:25401", // @arvidn's
 }

@@ -6,6 +6,7 @@ services:
     container_name: bitmagnet
     image: ghcr.io/bitmagnet-io/bitmagnet:latest
     volumes:
+      - ./config:/root/.config/bitmagnet
       # Mount data folder (currently only used for logs when file rotation is enabled):
       - ./data/bitmagnet:/root/.local/share/bitmagnet
     restart: unless-stopped
@@ -44,6 +45,9 @@ services:
       # Put your personal gluetun/VPN account config and credentials here:
       # (See https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers)
       - VPN_SERVICE_PROVIDER=your_vpn_provider
+    devices:
+      # See https://github.com/qdm12/gluetun/issues/2538
+      - /dev/net/tun:/dev/net/tun
     restart: always
     # Host names must be manually mapped here for bitmagnet to resolve them:
     extra_hosts:

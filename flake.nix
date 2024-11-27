@@ -1,6 +1,6 @@
 {
   description = "A basic flake with a shell";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = {
@@ -16,11 +16,11 @@
         default = pkgs.mkShell {
           packages = with pkgs; [
             bundler
-            go_1_22
+            go_1_23
             go-task
             golangci-lint
             jekyll
-            nodejs_20
+            nodejs_22
             nodePackages.prettier
             protobuf
             protoc-gen-go
