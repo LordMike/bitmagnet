@@ -2,8 +2,6 @@ package dhtcrawler
 
 import (
 	"time"
-
-	adht "github.com/anacrolix/dht/v2"
 )
 
 type Config struct {
