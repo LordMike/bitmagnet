@@ -2,6 +2,8 @@ package dhtcrawler
 
 import (
 	"context"
+	"time"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/blocking"
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/lazy"
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/worker"
@@ -17,7 +19,6 @@ import (
 	boom "github.com/tylertreat/BoomFilters"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-	"time"
 )
 
 type Params struct {
@@ -96,10 +97,13 @@ func New(params Params) Result {
 							1000,
 							time.Minute,
 						),
-						saveFilesThreshold: params.Config.SaveFilesThreshold,
-						savePieces:         params.Config.SavePieces,
-						rescrapeThreshold:  params.Config.RescrapeThreshold,
-						dao:                query,
+						saveFilesThreshold:     params.Config.SaveFilesThreshold,
+						savePieces:             params.Config.SavePieces,
+						saveTorrents:           params.Config.SaveTorrents,
+						saveTorrentsRoot:       params.Config.SaveTorrentsRoot,
+						saveTorrentsTempSuffix: params.Config.SaveTorrentsTempSuffix,
+						rescrapeThreshold:      params.Config.RescrapeThreshold,
+						dao:                    query,
 						ignoreHashes: &ignoreHashes{
 							bloom: boom.NewStableBloomFilter(10_000_000, 2, 0.001),
 						},

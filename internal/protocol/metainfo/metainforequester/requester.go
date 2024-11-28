@@ -6,15 +6,16 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/anacrolix/torrent/bencode"
-	"github.com/anacrolix/torrent/peer_protocol"
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo"
 	"io"
 	"math"
 	"net"
 	"net/netip"
 	"time"
+
+	"github.com/anacrolix/torrent/bencode"
+	"github.com/anacrolix/torrent/peer_protocol"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo"
 )
 
 type Requester interface {
@@ -72,7 +73,8 @@ type HandshakeInfo struct {
 
 type Response struct {
 	HandshakeInfo
-	Info metainfo.Info
+	Info          metainfo.Info
+	MetaInfoBytes []byte
 }
 
 func (r requester) Request(ctx context.Context, infoHash protocol.ID, addr netip.AddrPort) (Response, error) {
@@ -107,6 +109,7 @@ func (r requester) Request(ctx context.Context, infoHash protocol.ID, addr netip
 	return Response{
 		HandshakeInfo: hsInfo,
 		Info:          parsed,
+		MetaInfoBytes: pieces,
 	}, nil
 }
 

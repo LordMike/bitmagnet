@@ -19,6 +19,11 @@ type Config struct {
 	SavePieces bool
 	// RescrapeThreshold is the amount of time that must pass before a torrent is rescraped to count seeders and leechers.
 	RescrapeThreshold time.Duration
+
+	SaveTorrents     bool
+	SaveTorrentsRoot string
+	// When multiple instances of dht_crawler are running, it is possible to avoid torrent corruption by setting a unique temp file suffix for each instance
+	SaveTorrentsTempSuffix string
 }
 
 func NewDefaultConfig() Config {
@@ -29,6 +34,9 @@ func NewDefaultConfig() Config {
 		SaveFilesThreshold:           100,
 		SavePieces:                   false,
 		RescrapeThreshold:            time.Hour * 24 * 30,
+		SaveTorrents:                 false,
+		SaveTorrentsRoot:             "./torrents",
+		SaveTorrentsTempSuffix:       ".tmp",
 	}
 }
 
