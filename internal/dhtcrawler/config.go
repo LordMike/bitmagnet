@@ -17,8 +17,6 @@ type Config struct {
 	// SavePieces when true, torrent pieces will be persisted to the database.
 	// The pieces take up quite a lot of space, and aren't currently very useful, but they may be used by future features.
 	SavePieces bool
-	// RescrapeThreshold is the amount of time that must pass before a torrent is rescraped to count seeders and leechers.
-	RescrapeThreshold time.Duration
 
 	SaveTorrents     bool
 	SaveTorrentsRoot string
@@ -33,7 +31,6 @@ func NewDefaultConfig() Config {
 		ReseedBootstrapNodesInterval: time.Minute,
 		SaveFilesThreshold:           100,
 		SavePieces:                   false,
-		RescrapeThreshold:            time.Hour * 24 * 30,
 		SaveTorrents:                 false,
 		SaveTorrentsRoot:             "./torrents",
 		SaveTorrentsTempSuffix:       ".tmp",
