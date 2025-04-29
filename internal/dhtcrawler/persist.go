@@ -126,16 +126,16 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 			// }); persistErr != nil {
 			// 	c.logger.Errorf("error persisting torrents: %s", persistErr)
 			// } else {
-			// 	c.persistedTotal.With(prometheus.Labels{"entity": "Torrent"}).Add(float64(len(torrentsToPersist)))
-			// 	c.logger.Debugw("persisted torrents", "count", len(torrentsToPersist))
-			// 	for _, i := range hashMap {
-			// 		select {
-			// 		case <-ctx.Done():
-			// 			return
-			// 		case c.scrape.In() <- i.nodeHasPeersForHash:
-			// 			continue
-			// 		}
-			// 	}
+			// c.persistedTotal.With(prometheus.Labels{"entity": "Torrent"}).Add(float64(len(torrentsToPersist)))
+			c.logger.Debugw("persisted torrents", "count", len(torrentsToPersist))
+			for _, i := range hashMap {
+				select {
+				case <-ctx.Done():
+					return
+				case c.scrape.In() <- i.nodeHasPeersForHash:
+					continue
+				}
+			}
 			// }
 		}
 	}
