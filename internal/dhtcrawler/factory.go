@@ -8,6 +8,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/lazy"
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/worker"
 	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
+	"github.com/bitmagnet-io/bitmagnet/internal/database/dao"
 	"github.com/bitmagnet-io/bitmagnet/internal/database/search"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/client"
@@ -28,6 +29,7 @@ type Params struct {
 	MetainfoRequester metainforequester.Requester
 	BanningChecker    banning.Checker `name:"metainfo_banning_checker"`
 	Search            lazy.Lazy[search.Search]
+	Dao               lazy.Lazy[*dao.Query]
 	BlockingManager   lazy.Lazy[blocking.Manager]
 	DiscoveredNodes   concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
 	Logger            *zap.SugaredLogger
@@ -60,6 +62,10 @@ func New(params Params) Result {
 					if err != nil {
 						return err
 					}
+					query, err := params.Dao.Get()
+					if err != nil {
+						return err
+					}
 					blockingManager, err := params.BlockingManager.Get()
 					if err != nil {
 						return err
@@ -86,11 +92,18 @@ func New(params Params) Result {
 							1000,
 							time.Minute,
 						),
+						persistSources: concurrency.NewBatchingChannel[infoHashWithScrape](
+							1000,
+							1000,
+							time.Minute,
+						),
 						saveFilesThreshold:     params.Config.SaveFilesThreshold,
 						savePieces:             params.Config.SavePieces,
 						saveTorrents:           params.Config.SaveTorrents,
 						saveTorrentsRoot:       params.Config.SaveTorrentsRoot,
 						saveTorrentsTempSuffix: params.Config.SaveTorrentsTempSuffix,
+						rescrapeThreshold:      params.Config.RescrapeThreshold,
+						dao:                    query,
 						ignoreHashes: &ignoreHashes{
 							bloom: boom.NewStableBloomFilter(10_000_000, 2, 0.001),
 						},

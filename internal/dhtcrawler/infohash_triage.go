@@ -2,13 +2,10 @@ package dhtcrawler
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
-
+	"database/sql/driver"
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
+	"time"
 )
 
 // runInfoHashTriage receives discovered hashes on the infoHashTriage channel, determines if they should be crawled,
@@ -33,20 +30,59 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 				allHashes = append(allHashes, r.infoHash)
 				reqMap[r.infoHash] = r
 			}
-
-			for _, infoHash := range allHashes {
-				infoHashStr := strings.ToUpper(infoHash.String())
-
-				// Use the first byte of the infoHash as a directory prefix
-				filePath := filepath.Join(c.saveTorrentsRoot, infoHashStr[:2], infoHashStr+".torrent")
-
-				// Check if the file exists
-				if _, err := os.Stat(filePath); os.IsNotExist(err) {
-					// File does not exist, forward to getPeers
+			filteredHashes, filterErr := c.blockingManager.Filter(ctx, allHashes)
+			if filterErr != nil {
+				c.logger.Errorf("failed to filter infohashes: %s", filterErr.Error())
+				break
+			}
+			if len(filteredHashes) == 0 {
+				break
+			}
+			filteredHashMap := make(map[protocol.ID]struct{}, len(filteredHashes))
+			valuers := make([]driver.Valuer, 0, len(filteredHashes))
+			for _, h := range filteredHashes {
+				filteredHashMap[h] = struct{}{}
+				valuers = append(valuers, h)
+			}
+			var result []*triageResult
+			if queryErr := c.dao.Torrent.WithContext(ctx).Select(
+				c.dao.Torrent.InfoHash,
+				c.dao.Torrent.FilesStatus,
+				c.dao.Torrent.FilesCount,
+				c.dao.TorrentsTorrentSource.Seeders,
+				c.dao.TorrentsTorrentSource.Leechers,
+				c.dao.TorrentsTorrentSource.UpdatedAt,
+			).LeftJoin(
+				c.dao.TorrentsTorrentSource,
+				c.dao.Torrent.InfoHash.EqCol(c.dao.TorrentsTorrentSource.InfoHash),
+				c.dao.TorrentsTorrentSource.Source.Eq("dht"),
+			).Where(
+				c.dao.Torrent.InfoHash.In(valuers...),
+			).UnderlyingDB().Find(&result).Error; queryErr != nil {
+				c.logger.Errorf("failed to search existing torrents: %s", queryErr.Error())
+				break
+			}
+			foundTorrents := make(map[protocol.ID]triageResult)
+			for _, t := range result {
+				foundTorrents[t.InfoHash] = *t
+			}
+			for h := range filteredHashMap {
+				r := reqMap[h]
+				if t, ok := foundTorrents[r.infoHash]; !ok ||
+					t.FilesStatus == model.FilesStatusNoInfo ||
+					(t.FilesStatus != model.FilesStatusSingle && !t.FilesCount.Valid) ||
+					(t.FilesStatus == model.FilesStatusOverThreshold && t.FilesCount.Uint <= c.saveFilesThreshold) {
 					select {
 					case <-ctx.Done():
 						return
-					case c.getPeers.In() <- reqMap[infoHash]:
+					case c.getPeers.In() <- r:
+						continue
+					}
+				} else if !(t.Seeders.Valid && t.Leechers.Valid) || t.UpdatedAt.Before(time.Now().Add(-c.rescrapeThreshold)) {
+					select {
+					case <-ctx.Done():
+						return
+					case c.scrape.In() <- r:
 						continue
 					}
 				}

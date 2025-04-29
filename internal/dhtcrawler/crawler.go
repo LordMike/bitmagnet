@@ -9,6 +9,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/blocking"
 	"github.com/bitmagnet-io/bitmagnet/internal/bloom"
 	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
+	"github.com/bitmagnet-io/bitmagnet/internal/database/dao"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/client"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
@@ -38,11 +39,14 @@ type crawler struct {
 	scrape                       concurrency.BufferedConcurrentChannel[nodeHasPeersForHash]
 	requestMetaInfo              concurrency.BufferedConcurrentChannel[infoHashWithPeers]
 	persistTorrents              concurrency.BatchingChannel[infoHashWithMetaInfo]
+	persistSources               concurrency.BatchingChannel[infoHashWithScrape]
+	rescrapeThreshold            time.Duration
 	saveFilesThreshold           uint
 	savePieces                   bool
 	saveTorrents                 bool
 	saveTorrentsRoot             string
 	saveTorrentsTempSuffix       string
+	dao                          *dao.Query
 	// ignoreHashes is a thread-safe bloom filter that the crawler keeps in memory, containing every hash it has already encountered.
 	// This avoids multiple attempts to crawl the same hash, and takes a lot of load off the database query that checks if a hash
 	// has already been indexed.
@@ -70,8 +74,10 @@ func (c *crawler) start() {
 	go c.runInfoHashTriage(ctx)
 	go c.runGetPeers(ctx)
 	go c.runRequestMetaInfo(ctx)
+	go c.runScrape(ctx)
 	go c.reseedBootstrapNodes(ctx)
 	go c.runPersistTorrents(ctx)
+	go c.runPersistSources(ctx)
 	go c.getOldNodes(ctx)
 	<-c.stopped
 }
