@@ -3,14 +3,12 @@ package dhtcrawler
 import (
 	"context"
 	"strings"
-	"time"
 
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
-	"github.com/bitmagnet-io/bitmagnet/internal/processor"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo"
 )
@@ -24,61 +22,13 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case is := <-c.persistTorrents.Out():
-			torrentsToPersist := make([]*model.Torrent, 0, len(is))
-			var torrentFilesToPersist []*model.TorrentFile
-			var torrentSourcesToPersist []*model.TorrentsTorrentSource
-			var torrentPiecesToPersist []*model.TorrentPieces
-			var queueJobsToPersist []*model.QueueJob
 			hashMap := make(map[protocol.ID]infoHashWithMetaInfo, len(is))
-			var hashesToClassify []protocol.ID
-			flushHashesToClassify := func() {
-				if len(hashesToClassify) > 0 {
-					job, err := processor.NewQueueJob(processor.MessageParams{
-						InfoHashes: hashesToClassify,
-					},
-						// delay the classifier by a minute to allow time for the S/L scrape:
-						model.QueueJobDelayBy(time.Minute),
-					)
-					if err != nil {
-						c.logger.Errorf("error creating queue job: %s", err.Error())
-					} else {
-						queueJobsToPersist = append(queueJobsToPersist, &job)
-					}
-				}
-				hashesToClassify = make([]protocol.ID, 0, classifyBatchSize)
-			}
-			flushHashesToClassify()
 			for _, i := range is {
 				if _, ok := hashMap[i.infoHash]; ok {
 					continue
 				}
 				hashMap[i.infoHash] = i
-				if t, err := createTorrentModel(i.infoHash, i.metaInfo, c.savePieces, c.saveFilesThreshold); err != nil {
-					c.logger.Errorf("error creating torrent model: %s", err.Error())
-				} else {
-					for _, f := range t.Files {
-						fc := f
-						torrentFilesToPersist = append(torrentFilesToPersist, &fc)
-					}
-					t.Files = nil
-					for _, s := range t.Sources {
-						sc := s
-						torrentSourcesToPersist = append(torrentSourcesToPersist, &sc)
-					}
-					t.Sources = nil
-					if c.savePieces {
-						pc := t.Pieces
-						torrentPiecesToPersist = append(torrentPiecesToPersist, &pc)
-						t.Pieces = model.TorrentPieces{}
-					}
-					torrentsToPersist = append(torrentsToPersist, &t)
-					// hashesToClassify = append(hashesToClassify, i.infoHash)
-					// if len(hashesToClassify) >= classifyBatchSize {
-					// 	flushHashesToClassify()
-					// }
-				}
 			}
-			flushHashesToClassify()
 
 			// Persist to disk
 			if c.saveTorrents {
@@ -87,47 +37,6 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 				}
 			}
 
-			// Persist to DB
-			// if persistErr := c.dao.Transaction(func(tx *dao.Query) error {
-			// 	if err := tx.WithContext(ctx).Torrent.Clauses(clause.OnConflict{
-			// 		Columns: []clause.Column{{Name: string(c.dao.Torrent.InfoHash.ColumnName())}},
-			// 		DoUpdates: clause.AssignmentColumns([]string{
-			// 			string(c.dao.Torrent.Name.ColumnName()),
-			// 			string(c.dao.Torrent.FilesStatus.ColumnName()),
-			// 			string(c.dao.Torrent.FilesCount.ColumnName()),
-			// 			string(c.dao.Torrent.UpdatedAt.ColumnName()),
-			// 		}),
-			// 	}).CreateInBatches(torrentsToPersist, 100); err != nil {
-			// 		return err
-			// 	}
-			// 	if len(torrentFilesToPersist) > 0 {
-			// 		if err := tx.WithContext(ctx).TorrentFile.Clauses(clause.OnConflict{
-			// 			DoNothing: true,
-			// 		}).CreateInBatches(torrentFilesToPersist, 100); err != nil {
-			// 			return err
-			// 		}
-			// 	}
-			// 	if err := tx.WithContext(ctx).TorrentsTorrentSource.Clauses(clause.OnConflict{
-			// 		DoNothing: true,
-			// 	}).CreateInBatches(torrentSourcesToPersist, 100); err != nil {
-			// 		return err
-			// 	}
-			// 	if c.savePieces {
-			// 		if err := tx.WithContext(ctx).TorrentPieces.Clauses(clause.OnConflict{
-			// 			DoNothing: true,
-			// 		}).CreateInBatches(torrentPiecesToPersist, 10); err != nil {
-			// 			return err
-			// 		}
-			// 	}
-			// 	if err := tx.WithContext(ctx).QueueJob.CreateInBatches(queueJobsToPersist, 10); err != nil {
-			// 		return err
-			// 	}
-			// 	return nil
-			// }); persistErr != nil {
-			// 	c.logger.Errorf("error persisting torrents: %s", persistErr)
-			// } else {
-			// c.persistedTotal.With(prometheus.Labels{"entity": "Torrent"}).Add(float64(len(torrentsToPersist)))
-			c.logger.Debugw("persisted torrents", "count", len(torrentsToPersist))
 			for _, i := range hashMap {
 				select {
 				case <-ctx.Done():
@@ -136,7 +45,6 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 					continue
 				}
 			}
-			// }
 		}
 	}
 }
@@ -203,7 +111,7 @@ func (c *crawler) saveRawMetadataToFile(infoHash string, rawMetaInfo []byte) err
 		return fmt.Errorf("failed to rename temp file to final file: %v", err)
 	}
 
-	c.logger.Debugw("Successfully saved torrent file", "filePath", finalFilePath)
+	c.logger.Infof("saved torrent", infoHash)
 	return nil
 }
 

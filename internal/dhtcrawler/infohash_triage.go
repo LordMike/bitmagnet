@@ -3,9 +3,13 @@ package dhtcrawler
 import (
 	"context"
 	"database/sql/driver"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
-	"time"
 )
 
 // runInfoHashTriage receives discovered hashes on the infoHashTriage channel, determines if they should be crawled,
@@ -44,48 +48,67 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 				filteredHashMap[h] = struct{}{}
 				valuers = append(valuers, h)
 			}
-			var result []*triageResult
-			if queryErr := c.dao.Torrent.WithContext(ctx).Select(
-				c.dao.Torrent.InfoHash,
-				c.dao.Torrent.FilesStatus,
-				c.dao.Torrent.FilesCount,
-				c.dao.TorrentsTorrentSource.Seeders,
-				c.dao.TorrentsTorrentSource.Leechers,
-				c.dao.TorrentsTorrentSource.UpdatedAt,
-			).LeftJoin(
-				c.dao.TorrentsTorrentSource,
-				c.dao.Torrent.InfoHash.EqCol(c.dao.TorrentsTorrentSource.InfoHash),
-				c.dao.TorrentsTorrentSource.Source.Eq("dht"),
-			).Where(
-				c.dao.Torrent.InfoHash.In(valuers...),
-			).UnderlyingDB().Find(&result).Error; queryErr != nil {
-				c.logger.Errorf("failed to search existing torrents: %s", queryErr.Error())
-				break
-			}
-			foundTorrents := make(map[protocol.ID]triageResult)
-			for _, t := range result {
-				foundTorrents[t.InfoHash] = *t
-			}
+			// var result []*triageResult
+			// if queryErr := c.dao.Torrent.WithContext(ctx).Select(
+			// 	c.dao.Torrent.InfoHash,
+			// 	c.dao.Torrent.FilesStatus,
+			// 	c.dao.Torrent.FilesCount,
+			// 	c.dao.TorrentsTorrentSource.Seeders,
+			// 	c.dao.TorrentsTorrentSource.Leechers,
+			// 	c.dao.TorrentsTorrentSource.UpdatedAt,
+			// ).LeftJoin(
+			// 	c.dao.TorrentsTorrentSource,
+			// 	c.dao.Torrent.InfoHash.EqCol(c.dao.TorrentsTorrentSource.InfoHash),
+			// 	c.dao.TorrentsTorrentSource.Source.Eq("dht"),
+			// ).Where(
+			// 	c.dao.Torrent.InfoHash.In(valuers...),
+			// ).UnderlyingDB().Find(&result).Error; queryErr != nil {
+			// 	c.logger.Errorf("failed to search existing torrents: %s", queryErr.Error())
+			// 	break
+			// }
+			// foundTorrents := make(map[protocol.ID]triageResult)
+			// for _, t := range result {
+			// 	foundTorrents[t.InfoHash] = *t
+			// }
 			for h := range filteredHashMap {
 				r := reqMap[h]
-				if t, ok := foundTorrents[r.infoHash]; !ok ||
-					t.FilesStatus == model.FilesStatusNoInfo ||
-					(t.FilesStatus != model.FilesStatusSingle && !t.FilesCount.Valid) ||
-					(t.FilesStatus == model.FilesStatusOverThreshold && t.FilesCount.Uint <= c.saveFilesThreshold) {
+
+				// Convert infoHash to uppercase to ensure consistency
+				infoHashStr := strings.ToUpper(r.infoHash.String())
+
+				// Create a two-level trie directory structure using the first 4 characters of the infoHash
+				dir1 := infoHashStr[:2] // First 2 characters
+				finalFilePath := filepath.Join(c.saveTorrentsRoot, dir1, infoHashStr+".torrent")
+
+				if _, err := os.Stat(finalFilePath); os.IsNotExist(err) {
+					// File does not exist, add to c.scrape
 					select {
 					case <-ctx.Done():
 						return
 					case c.getPeers.In() <- r:
-						continue
-					}
-				} else if !(t.Seeders.Valid && t.Leechers.Valid) || t.UpdatedAt.Before(time.Now().Add(-c.rescrapeThreshold)) {
-					select {
-					case <-ctx.Done():
-						return
-					case c.scrape.In() <- r:
+						c.logger.Infof("get_peers for: %s", infoHashStr)
 						continue
 					}
 				}
+
+				// if t, ok := foundTorrents[r.infoHash]; !ok ||
+				// 	t.FilesStatus == model.FilesStatusNoInfo ||
+				// 	(t.FilesStatus != model.FilesStatusSingle && !t.FilesCount.Valid) ||
+				// 	(t.FilesStatus == model.FilesStatusOverThreshold && t.FilesCount.Uint <= c.saveFilesThreshold) {
+				// 	select {
+				// 	case <-ctx.Done():
+				// 		return
+				// 	case c.getPeers.In() <- r:
+				// 		continue
+				// 	}
+				// } else if !(t.Seeders.Valid && t.Leechers.Valid) || t.UpdatedAt.Before(time.Now().Add(-c.rescrapeThreshold)) {
+				// 	select {
+				// 	case <-ctx.Done():
+				// 		return
+				// 	case c.scrape.In() <- r:
+				// 		continue
+				// 	}
+				// }
 			}
 		}
 	}
