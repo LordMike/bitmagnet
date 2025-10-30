@@ -11,8 +11,6 @@ type Config struct {
 	ScalingFactor                uint
 	BootstrapNodes               []string
 	ReseedBootstrapNodesInterval time.Duration
-
-	SaveTorrents     bool
 	SaveTorrentsRoot string
 	// When multiple instances of dht_crawler are running, it is possible to avoid torrent corruption by setting a unique temp file suffix for each instance
 	SaveTorrentsTempSuffix string
@@ -23,7 +21,6 @@ func NewDefaultConfig() Config {
 		ScalingFactor:                10,
 		BootstrapNodes:               defaultBootstrapNodes,
 		ReseedBootstrapNodesInterval: time.Minute,
-		SaveTorrents:                 true,
 		SaveTorrentsRoot:             "./torrents",
 		SaveTorrentsTempSuffix:       ".tmp",
 	}

@@ -12,9 +12,6 @@ import (
 // runPersistTorrents serially drains the persist queue and writes torrents to disk as they arrive.
 func (c *crawler) runPersistTorrents(ctx context.Context) {
 	handler := func(item infoHashWithMetaInfo) {
-		if !c.saveTorrents {
-			return
-		}
 		if err := c.saveRawMetadataToFile(item.infoHash.String(), item.MetaInfoBytes); err != nil {
 			c.logger.Errorw("failed to save torrent", "infoHash", item.infoHash.String(), "error", err)
 		}

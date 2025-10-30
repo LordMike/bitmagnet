@@ -31,7 +31,6 @@ type crawler struct {
 	getPeers                     concurrency.BufferedConcurrentChannel[nodeHasPeersForHash]
 	requestMetaInfo              concurrency.BufferedConcurrentChannel[infoHashWithPeers]
 	persistTorrents              concurrency.BufferedConcurrentChannel[infoHashWithMetaInfo]
-	saveTorrents                 bool
 	saveTorrentsRoot             string
 	saveTorrentsTempSuffix       string
 	// ignoreHashes is a thread-safe bloom filter that the crawler keeps in memory, containing every hash it has already encountered.
