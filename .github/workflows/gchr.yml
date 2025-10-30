@@ -29,6 +29,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare tag
+        id: vars
+        run: |
+          safe_ref="${GITHUB_REF_NAME//\//-}"
+          echo "tag=${safe_ref}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
@@ -36,5 +42,5 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY_IMAGE }}:${{ github.ref_name }}
+            ${{ env.REGISTRY_IMAGE }}:${{ steps.vars.outputs.tag }}
             ${{ env.REGISTRY_IMAGE }}:latest
