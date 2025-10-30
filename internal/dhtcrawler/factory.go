@@ -2,6 +2,7 @@ package dhtcrawler
 
 import (
 	"context"
+	"path/filepath"
 	"time"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/lazy"
@@ -68,6 +69,11 @@ func New(params Params) Result {
 						stopped:      make(chan struct{}),
 						logger:       params.Logger.Named("dht_crawler"),
 					}
+					if absRoot, err := filepath.Abs(c.saveTorrentsRoot); err != nil {
+						c.logger.Warnw("failed to resolve torrents path, using original", "path", c.saveTorrentsRoot, "error", err)
+					} else {
+						c.saveTorrentsRoot = absRoot
+					}
 					initialSoughtID := protocol.RandomNodeID()
 					c.soughtNodeID.Set(initialSoughtID)
 					c.logger.Infow(
@@ -75,7 +81,7 @@ func New(params Params) Result {
 						"nodeID", params.KTable.Origin().String(),
 						"initialSoughtNodeID", initialSoughtID.String(),
 						"bootstrapNodes", len(params.Config.BootstrapNodes),
-						"saveTorrentsRoot", params.Config.SaveTorrentsRoot,
+						"saveTorrentsRoot", c.saveTorrentsRoot,
 					)
 					go c.start()
 					return nil
