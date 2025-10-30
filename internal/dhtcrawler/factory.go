@@ -58,14 +58,10 @@ func New(params Params) Result {
 						infoHashTriage:               concurrency.NewBatchingChannel[nodeHasPeersForHash](10*scalingFactor, 1000, 20*time.Second),
 						getPeers:                     concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](10*scalingFactor, 20*scalingFactor),
 						requestMetaInfo:              concurrency.NewBufferedConcurrentChannel[infoHashWithPeers](10*scalingFactor, 40*scalingFactor),
-						persistTorrents: concurrency.NewBatchingChannel[infoHashWithMetaInfo](
-							1000,
-							1000,
-							time.Minute,
-						),
-						saveTorrents:           params.Config.SaveTorrents,
-						saveTorrentsRoot:       params.Config.SaveTorrentsRoot,
-						saveTorrentsTempSuffix: params.Config.SaveTorrentsTempSuffix,
+						persistTorrents:              concurrency.NewBufferedConcurrentChannel[infoHashWithMetaInfo](1000, 1),
+						saveTorrents:                 params.Config.SaveTorrents,
+						saveTorrentsRoot:             params.Config.SaveTorrentsRoot,
+						saveTorrentsTempSuffix:       params.Config.SaveTorrentsTempSuffix,
 						ignoreHashes: &ignoreHashes{
 							bloom: boom.NewStableBloomFilter(10_000_000, 2, 0.001),
 						},

@@ -30,7 +30,7 @@ type crawler struct {
 	infoHashTriage               concurrency.BatchingChannel[nodeHasPeersForHash]
 	getPeers                     concurrency.BufferedConcurrentChannel[nodeHasPeersForHash]
 	requestMetaInfo              concurrency.BufferedConcurrentChannel[infoHashWithPeers]
-	persistTorrents              concurrency.BatchingChannel[infoHashWithMetaInfo]
+	persistTorrents              concurrency.BufferedConcurrentChannel[infoHashWithMetaInfo]
 	saveTorrents                 bool
 	saveTorrentsRoot             string
 	saveTorrentsTempSuffix       string

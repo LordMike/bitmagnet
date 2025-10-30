@@ -2,35 +2,25 @@ package dhtcrawler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 )
 
-// runPersistTorrents waits on the persistTorrents channel and writes unique torrents to disk.
+// runPersistTorrents serially drains the persist queue and writes torrents to disk as they arrive.
 func (c *crawler) runPersistTorrents(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
+	handler := func(item infoHashWithMetaInfo) {
+		if !c.saveTorrents {
 			return
-		case batch := <-c.persistTorrents.Out():
-			if !c.saveTorrents {
-				continue
-			}
-			seen := make(map[protocol.ID]struct{}, len(batch))
-			for _, item := range batch {
-				if _, ok := seen[item.infoHash]; ok {
-					continue
-				}
-				seen[item.infoHash] = struct{}{}
-				if err := c.saveRawMetadataToFile(item.infoHash.String(), item.MetaInfoBytes); err != nil {
-					c.logger.Errorw("failed to save torrent", "infoHash", item.infoHash.String(), "error", err)
-				}
-			}
 		}
+		if err := c.saveRawMetadataToFile(item.infoHash.String(), item.MetaInfoBytes); err != nil {
+			c.logger.Errorw("failed to save torrent", "infoHash", item.infoHash.String(), "error", err)
+		}
+	}
+	if err := c.persistTorrents.Run(ctx, handler); err != nil && !errors.Is(err, context.Canceled) {
+		c.logger.Errorw("persist worker stopped unexpectedly", "error", err)
 	}
 }
 
@@ -96,6 +86,6 @@ func (c *crawler) saveRawMetadataToFile(infoHash string, rawMetaInfo []byte) err
 		return fmt.Errorf("failed to rename temp file to final file: %v", err)
 	}
 
-	c.logger.Infof("saved torrent", infoHash)
+	c.logger.Infow("saved torrent", "infoHash", infoHash)
 	return nil
 }
