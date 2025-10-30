@@ -76,6 +76,8 @@ func New(params Params) Result {
 						"nodeID", params.KTable.Origin().String(),
 						"initialSoughtNodeID", initialSoughtID.String(),
 						"bootstrapNodes", len(params.Config.BootstrapNodes),
+						"saveTorrents", params.Config.SaveTorrents,
+						"saveTorrentsRoot", params.Config.SaveTorrentsRoot,
 					)
 					go c.start()
 					return nil
