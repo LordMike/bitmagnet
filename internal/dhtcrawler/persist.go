@@ -48,13 +48,20 @@ func (c *crawler) saveRawMetadataToFile(infoHash string, rawMetaInfo []byte) err
 		return nil
 	}
 
-	// Create and write to the temporary file
-	tempFile, err := os.Create(tempFilePath)
+	// Create the temporary file exclusively so parallel writers defer to the first
+	tempFile, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			c.logger.Debugw("temp file already exists, skipping save", "tempFilePath", tempFilePath)
+			return nil
+		}
 		c.logger.Errorw("failed to create temp file", "tempFilePath", tempFilePath, "error", err)
 		return fmt.Errorf("failed to create temp file: %v", err)
 	}
-	defer tempFile.Close()
+	defer func() {
+		_ = tempFile.Close()
+		_ = os.Remove(tempFilePath)
+	}()
 
 	var writeErr error
 	_, writeErr = tempFile.Write([]byte("d4:info"))
@@ -82,6 +89,9 @@ func (c *crawler) saveRawMetadataToFile(infoHash string, rawMetaInfo []byte) err
 
 	// Rename the temp file to the final file
 	if err := os.Rename(tempFilePath, finalFilePath); err != nil {
+		if _, statErr := os.Stat(finalFilePath); statErr == nil {
+			return nil
+		}
 		c.logger.Errorw("failed to rename temp file to final file", "tempFilePath", tempFilePath, "finalFilePath", finalFilePath, "error", err)
 		return fmt.Errorf("failed to rename temp file to final file: %v", err)
 	}

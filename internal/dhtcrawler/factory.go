@@ -69,7 +69,14 @@ func New(params Params) Result {
 						stopped:      make(chan struct{}),
 						logger:       params.Logger.Named("dht_crawler"),
 					}
-					c.soughtNodeID.Set(protocol.RandomNodeID())
+					initialSoughtID := protocol.RandomNodeID()
+					c.soughtNodeID.Set(initialSoughtID)
+					c.logger.Infow(
+						"crawler starting",
+						"nodeID", params.KTable.Origin().String(),
+						"initialSoughtNodeID", initialSoughtID.String(),
+						"bootstrapNodes", len(params.Config.BootstrapNodes),
+					)
 					go c.start()
 					return nil
 				},
