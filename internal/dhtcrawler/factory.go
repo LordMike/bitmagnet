@@ -43,11 +43,11 @@ func New(params Params) Result {
 					if err != nil {
 						return err
 					}
-			c = crawler{
-				kTable:                       params.KTable,
-				client:                       cl,
-				metainfoRequester:            params.MetainfoRequester,
-				bootstrapNodes:               params.Config.BootstrapNodes,
+					c = crawler{
+						kTable:                       params.KTable,
+						client:                       cl,
+						metainfoRequester:            params.MetainfoRequester,
+						bootstrapNodes:               params.Config.BootstrapNodes,
 						reseedBootstrapNodesInterval: params.Config.ReseedBootstrapNodesInterval,
 						getOldestNodesInterval:       time.Second * 10,
 						oldPeerThreshold:             time.Minute * 15,
@@ -58,9 +58,9 @@ func New(params Params) Result {
 						infoHashTriage:               concurrency.NewBatchingChannel[nodeHasPeersForHash](10*scalingFactor, 1000, 20*time.Second),
 						getPeers:                     concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](10*scalingFactor, 20*scalingFactor),
 						requestMetaInfo:              concurrency.NewBufferedConcurrentChannel[infoHashWithPeers](10*scalingFactor, 40*scalingFactor),
-				persistTorrents:              concurrency.NewBufferedConcurrentChannel[infoHashWithMetaInfo](1000, 1),
-				saveTorrentsRoot:             params.Config.SaveTorrentsRoot,
-				saveTorrentsTempSuffix:       params.Config.SaveTorrentsTempSuffix,
+						persistTorrents:              concurrency.NewBufferedConcurrentChannel[infoHashWithMetaInfo](1000, 1),
+						saveTorrentsRoot:             params.Config.SaveTorrentsRoot,
+						saveTorrentsTempSuffix:       params.Config.SaveTorrentsTempSuffix,
 						ignoreHashes: &ignoreHashes{
 							bloom: boom.NewStableBloomFilter(10_000_000, 2, 0.001),
 						},
@@ -70,13 +70,13 @@ func New(params Params) Result {
 					}
 					initialSoughtID := protocol.RandomNodeID()
 					c.soughtNodeID.Set(initialSoughtID)
-			c.logger.Infow(
-				"crawler starting",
-				"nodeID", params.KTable.Origin().String(),
-				"initialSoughtNodeID", initialSoughtID.String(),
-				"bootstrapNodes", len(params.Config.BootstrapNodes),
-				"saveTorrentsRoot", params.Config.SaveTorrentsRoot,
-			)
+					c.logger.Infow(
+						"crawler starting",
+						"nodeID", params.KTable.Origin().String(),
+						"initialSoughtNodeID", initialSoughtID.String(),
+						"bootstrapNodes", len(params.Config.BootstrapNodes),
+						"saveTorrentsRoot", params.Config.SaveTorrentsRoot,
+					)
 					go c.start()
 					return nil
 				},
