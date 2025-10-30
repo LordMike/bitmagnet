@@ -97,10 +97,6 @@ type Return struct {
 	Token  *string    `bencode:"token,omitempty"`  // Token for future announce_peer or put (BEP 44)
 	Values []NodeAddr `bencode:"values,omitempty"` // Torrent peers
 
-	// BEP 33 (scrapes)
-	BFsd *ScrapeBloomFilter `bencode:"BFsd,omitempty"`
-	BFpe *ScrapeBloomFilter `bencode:"BFpe,omitempty"`
-
 	Bep51Return
 
 	// BEP 44

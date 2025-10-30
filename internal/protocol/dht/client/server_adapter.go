@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/server"
@@ -42,23 +41,6 @@ func (a serverAdapter) GetPeers(ctx context.Context, addr netip.AddrPort, infoHa
 		ID:     res.Msg.R.ID,
 		Values: extractValues(res.Msg),
 		Nodes:  extractNodes(res.Msg),
-	}, nil
-}
-
-func (a serverAdapter) GetPeersScrape(ctx context.Context, addr netip.AddrPort, infoHash protocol.ID) (GetPeersScrapeResult, error) {
-	res, err := a.server.Query(ctx, addr, dht.QGetPeers, dht.MsgArgs{ID: a.nodeID, InfoHash: infoHash, Scrape: 1})
-	if err != nil {
-		return GetPeersScrapeResult{}, err
-	}
-	if res.Msg.R.BFpe == nil || res.Msg.R.BFsd == nil {
-		return GetPeersScrapeResult{}, errors.New("missing bloom filter in scrape response")
-	}
-	return GetPeersScrapeResult{
-		ID:        res.Msg.R.ID,
-		Values:    extractValues(res.Msg),
-		Nodes:     extractNodes(res.Msg),
-		BfPeers:   *res.Msg.R.BFpe.ToBloomFilter(),
-		BfSeeders: *res.Msg.R.BFsd.ToBloomFilter(),
 	}, nil
 }
 

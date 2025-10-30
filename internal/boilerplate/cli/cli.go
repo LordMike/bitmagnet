@@ -52,8 +52,11 @@ func New(p Params) (Result, error) {
 			go (func() {
 				// the following hack fixes a weird bug where the CLI does not terminate when calling with just --help
 				args := p.Args
-				if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
+				switch {
+				case len(args) == 2 && (args[1] == "-h" || args[1] == "--help"):
 					args = []string{args[0]}
+				case len(args) == 1:
+					args = []string{args[0], "worker", "run", "--all"}
 				}
 				if err := app.RunContext(context.Background(), args); err != nil {
 					panic(err)

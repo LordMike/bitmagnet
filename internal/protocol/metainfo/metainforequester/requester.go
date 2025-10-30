@@ -15,7 +15,6 @@ import (
 	"github.com/anacrolix/torrent/bencode"
 	"github.com/anacrolix/torrent/peer_protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo"
 )
 
 type Requester interface {
@@ -73,7 +72,6 @@ type HandshakeInfo struct {
 
 type Response struct {
 	HandshakeInfo
-	Info          metainfo.Info
 	MetaInfoBytes []byte
 }
 
@@ -102,13 +100,8 @@ func (r requester) Request(ctx context.Context, infoHash protocol.ID, addr netip
 	if readAllPiecesErr != nil {
 		return Response{}, readAllPiecesErr
 	}
-	parsed, parseErr := metainfo.ParseMetaInfoBytes(infoHash, pieces)
-	if parseErr != nil {
-		return Response{}, parseErr
-	}
 	return Response{
 		HandshakeInfo: hsInfo,
-		Info:          parsed,
 		MetaInfoBytes: pieces,
 	}, nil
 }

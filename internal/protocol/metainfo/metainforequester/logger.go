@@ -28,7 +28,7 @@ func (r requestLogger) Request(ctx context.Context, infoHash protocol.ID, addr n
 	} else {
 		keyValues = append(keyValues,
 			"peerId", resp.PeerID,
-			"torrentName", resp.Info.BestName(),
+			"bytes", len(resp.MetaInfoBytes),
 		)
 	}
 	r.logger.Debugw(message, keyValues...)

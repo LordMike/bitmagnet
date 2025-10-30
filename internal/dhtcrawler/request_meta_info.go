@@ -20,7 +20,6 @@ func (c *crawler) runRequestMetaInfo(ctx context.Context) {
 		case <-ctx.Done():
 		case c.persistTorrents.In() <- infoHashWithMetaInfo{
 			nodeHasPeersForHash: req.nodeHasPeersForHash,
-			metaInfo:            mi.Info,
 			MetaInfoBytes:       mi.MetaInfoBytes,
 		}:
 		}
@@ -44,10 +43,6 @@ func (c *crawler) doRequestMetaInfo(
 		if err != nil {
 			addErr(err)
 			continue
-		}
-		if banErr := c.banningChecker.Check(res.Info); banErr != nil {
-			_ = c.blockingManager.Block(ctx, []protocol.ID{hash})
-			return metainforequester.Response{}, banErr
 		}
 		return res, nil
 	}
