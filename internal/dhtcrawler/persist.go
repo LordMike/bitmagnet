@@ -20,7 +20,7 @@ func (c *crawler) runPersistTorrents(ctx context.Context) {
 		}
 	}()
 	handler := func(item infoHashWithMetaInfo) {
-		if err := c.tfileWriter.WriteRawMetadata(item.MetaInfoBytes); err != nil {
+		if err := c.tfileWriter.WriteTorrent(item.infoHash, item.MetaInfoBytes); err != nil {
 			c.logger.Errorw("failed to persist torrent", "infoHash", item.infoHash.String(), "error", err)
 			return
 		}

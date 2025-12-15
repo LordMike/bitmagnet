@@ -11,11 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"go.uber.org/zap"
 )
 
 const (
-	tfileMagic = "TorrentBlobv1"
+	tfileMagic = "TorrentBlobV2"
 )
 
 var (
@@ -53,7 +54,7 @@ func newTFileWriter(dir string, maxTorrentsPerFile int, tfilePrefix string, logg
 	}
 }
 
-func (w *tfileWriter) WriteRawMetadata(rawMetaInfo []byte) error {
+func (w *tfileWriter) WriteTorrent(infoHash protocol.ID, rawMetaInfo []byte) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -68,9 +69,10 @@ func (w *tfileWriter) WriteRawMetadata(rawMetaInfo []byte) error {
 		return fmt.Errorf("torrent too large: %d bytes", torrentLen)
 	}
 
-	var header [len(tfileMagic) + 4]byte
+	var header [len(tfileMagic) + 4 + 20]byte
 	copy(header[:], tfileMagic)
 	binary.LittleEndian.PutUint32(header[len(tfileMagic):], uint32(torrentLen))
+	copy(header[len(tfileMagic)+4:], infoHash[:])
 
 	if _, err := w.w.Write(header[:]); err != nil {
 		return err
