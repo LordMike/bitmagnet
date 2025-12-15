@@ -16,7 +16,7 @@ import (
 
 const (
 	tfileMagic              = "TorrentBlobv1"
-	tfileMaxTorrentsPerFile = 50
+	tfileMaxTorrentsPerFile = 50_000
 )
 
 var (
