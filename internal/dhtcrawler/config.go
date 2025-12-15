@@ -14,6 +14,7 @@ type Config struct {
 	SaveTorrentsRoot             string
 	RedisURL                     string
 	TfileMaxTorrentsPerFile      int
+	TfilePrefix                  string
 }
 
 func NewDefaultConfig() Config {
@@ -24,6 +25,7 @@ func NewDefaultConfig() Config {
 		SaveTorrentsRoot:             "./torrents",
 		RedisURL:                     "",
 		TfileMaxTorrentsPerFile:      10_000,
+		TfilePrefix:                  "",
 	}
 }
 

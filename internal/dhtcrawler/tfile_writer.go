@@ -31,6 +31,7 @@ type tfileWriter struct {
 	logger *zap.SugaredLogger
 
 	maxTorrentsPerFile int
+	tfilePrefix        string
 
 	tmpPath   string
 	finalPath string
@@ -40,11 +41,16 @@ type tfileWriter struct {
 	writtenInFile int
 }
 
-func newTFileWriter(dir string, maxTorrentsPerFile int, logger *zap.SugaredLogger) *tfileWriter {
+func newTFileWriter(dir string, maxTorrentsPerFile int, tfilePrefix string, logger *zap.SugaredLogger) *tfileWriter {
 	if maxTorrentsPerFile <= 0 {
 		maxTorrentsPerFile = 10_000
 	}
-	return &tfileWriter{dir: dir, maxTorrentsPerFile: maxTorrentsPerFile, logger: logger}
+	return &tfileWriter{
+		dir:                dir,
+		maxTorrentsPerFile: maxTorrentsPerFile,
+		tfilePrefix:        tfilePrefix,
+		logger:             logger,
+	}
 }
 
 func (w *tfileWriter) WriteRawMetadata(rawMetaInfo []byte) error {
@@ -137,14 +143,17 @@ func (w *tfileWriter) closeAndFinalizeLocked() error {
 }
 
 func (w *tfileWriter) openNewFileLocked() error {
-	host, err := os.Hostname()
-	if err != nil {
-		host = "unknown-host"
+	prefix := sanitizeFilenameComponent(w.tfilePrefix)
+	if prefix == "unknown" && strings.TrimSpace(w.tfilePrefix) == "" {
+		host, err := os.Hostname()
+		if err != nil {
+			host = "unknown-host"
+		}
+		prefix = sanitizeFilenameComponent(host)
 	}
-	host = sanitizeFilenameComponent(host)
 
 	stamp := time.Now().Format("20060102-1504")
-	base := fmt.Sprintf("%s-%s", host, stamp)
+	base := fmt.Sprintf("%s-%s", prefix, stamp)
 
 	dir := strings.TrimSpace(w.dir)
 	if dir == "" {
