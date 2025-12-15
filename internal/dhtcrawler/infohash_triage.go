@@ -2,14 +2,11 @@ package dhtcrawler
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 )
 
-// runInfoHashTriage receives discovered hashes, deduplicates them, and forwards only those without a saved .torrent file
+// runInfoHashTriage receives discovered hashes, deduplicates them, and forwards those which require metadata download
 // to the getPeers stage so that metadata can be fetched.
 func (c *crawler) runInfoHashTriage(ctx context.Context) {
 	for {
@@ -24,14 +21,8 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 				}
 				seen[r.infoHash] = struct{}{}
 
-				infoHashStr := strings.ToUpper(r.infoHash.String())
-				dir1 := infoHashStr[:2]
-				finalFilePath := filepath.Join(c.saveTorrentsRoot, dir1, infoHashStr+".torrent")
-
-				if _, err := os.Stat(finalFilePath); err == nil {
-					continue
-				} else if !os.IsNotExist(err) {
-					c.logger.Warnw("skipping infohash due to stat error", "infoHash", infoHashStr, "error", err)
+				infoHashStr := r.infoHash.String()
+				if c.shouldSkipMetadataDownload(r.infoHash) {
 					continue
 				}
 

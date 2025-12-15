@@ -44,6 +44,12 @@ func New(params Params) Result {
 					if err != nil {
 						return err
 					}
+					saveTorrentsRoot := params.Config.SaveTorrentsRoot
+					if absRoot, err := filepath.Abs(saveTorrentsRoot); err != nil {
+						params.Logger.Named("dht_crawler").Warnw("failed to resolve torrents path, using original", "path", saveTorrentsRoot, "error", err)
+					} else {
+						saveTorrentsRoot = absRoot
+					}
 					c = crawler{
 						kTable:                       params.KTable,
 						client:                       cl,
@@ -60,19 +66,14 @@ func New(params Params) Result {
 						getPeers:                     concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](10*scalingFactor, 20*scalingFactor),
 						requestMetaInfo:              concurrency.NewBufferedConcurrentChannel[infoHashWithPeers](10*scalingFactor, 40*scalingFactor),
 						persistTorrents:              concurrency.NewBufferedConcurrentChannel[infoHashWithMetaInfo](1000, 1),
-						saveTorrentsRoot:             params.Config.SaveTorrentsRoot,
-						saveTorrentsTempSuffix:       params.Config.SaveTorrentsTempSuffix,
+						tfileWriter:                  newTFileWriter(saveTorrentsRoot, params.Logger.Named("dht_crawler").Named("tfile_writer")),
+						persistDone:                  make(chan struct{}),
 						ignoreHashes: &ignoreHashes{
 							bloom: boom.NewStableBloomFilter(10_000_000, 2, 0.001),
 						},
 						soughtNodeID: &concurrency.AtomicValue[protocol.ID]{},
 						stopped:      make(chan struct{}),
 						logger:       params.Logger.Named("dht_crawler"),
-					}
-					if absRoot, err := filepath.Abs(c.saveTorrentsRoot); err != nil {
-						c.logger.Warnw("failed to resolve torrents path, using original", "path", c.saveTorrentsRoot, "error", err)
-					} else {
-						c.saveTorrentsRoot = absRoot
 					}
 					initialSoughtID := protocol.RandomNodeID()
 					c.soughtNodeID.Set(initialSoughtID)
@@ -81,14 +82,27 @@ func New(params Params) Result {
 						"nodeID", params.KTable.Origin().String(),
 						"initialSoughtNodeID", initialSoughtID.String(),
 						"bootstrapNodes", len(params.Config.BootstrapNodes),
-						"saveTorrentsRoot", c.saveTorrentsRoot,
+						"saveTorrentsRoot", saveTorrentsRoot,
 					)
 					go c.start()
 					return nil
 				},
-				OnStop: func(context.Context) error {
+				OnStop: func(ctx context.Context) error {
 					if c.stopped != nil {
 						close(c.stopped)
+					}
+					waitCtx := ctx
+					waitCancel := func() {}
+					if ctx.Err() != nil {
+						waitCtx, waitCancel = context.WithTimeout(context.Background(), 10*time.Second)
+					}
+					defer waitCancel()
+
+					if c.persistDone != nil {
+						select {
+						case <-waitCtx.Done():
+						case <-c.persistDone:
+						}
 					}
 					return nil
 				},

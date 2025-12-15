@@ -31,8 +31,8 @@ type crawler struct {
 	getPeers                     concurrency.BufferedConcurrentChannel[nodeHasPeersForHash]
 	requestMetaInfo              concurrency.BufferedConcurrentChannel[infoHashWithPeers]
 	persistTorrents              concurrency.BufferedConcurrentChannel[infoHashWithMetaInfo]
-	saveTorrentsRoot             string
-	saveTorrentsTempSuffix       string
+	tfileWriter                  *tfileWriter
+	persistDone                  chan struct{}
 	// ignoreHashes is a thread-safe bloom filter that the crawler keeps in memory, containing every hash it has already encountered.
 	// This avoids multiple attempts to crawl the same hash, and takes a lot of load off the database query that checks if a hash
 	// has already been indexed.

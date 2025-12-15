@@ -1,6 +1,9 @@
 package workercmd
 
 import (
+	"context"
+	"time"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/worker"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
@@ -45,8 +48,10 @@ func New(p Params) (Result, error) {
 					<-ctx.Context.Done()
 					return nil
 				},
-				After: func(context *cli.Context) error {
-					return p.Workers.Stop(context.Context)
+				After: func(cliCtx *cli.Context) error {
+					stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					return p.Workers.Stop(stopCtx)
 				},
 			},
 			{
