@@ -3,6 +3,7 @@ package metainforequester
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -100,10 +101,34 @@ func (r requester) Request(ctx context.Context, infoHash protocol.ID, addr netip
 	if readAllPiecesErr != nil {
 		return Response{}, readAllPiecesErr
 	}
+	if err := validateMetaInfoBytes(infoHash, pieces); err != nil {
+		return Response{}, err
+	}
 	return Response{
 		HandshakeInfo: hsInfo,
 		MetaInfoBytes: pieces,
 	}, nil
+}
+
+func validateMetaInfoBytes(expectedInfoHash protocol.ID, metaInfoBytes []byte) error {
+	// ut_metadata returns the bencoded "info" dictionary. The BitTorrent infohash is SHA1(bencoded info dict).
+	sum := sha1.Sum(metaInfoBytes)
+	var actual protocol.ID
+	copy(actual[:], sum[:])
+	if actual != expectedInfoHash {
+		return fmt.Errorf("metainfo bytes hash mismatch: expected %s got %s", expectedInfoHash.String(), actual.String())
+	}
+
+	var decoded any
+	if err := bencode.Unmarshal(metaInfoBytes, &decoded); err != nil {
+		return fmt.Errorf("invalid bencode metainfo: %w", err)
+	}
+	switch decoded.(type) {
+	case map[string]interface{}:
+		return nil
+	default:
+		return errors.New("invalid metainfo: expected bencoded dictionary")
+	}
 }
 
 func (r requester) connect(ctx context.Context, addr netip.AddrPort) (conn *net.TCPConn, err error) {
