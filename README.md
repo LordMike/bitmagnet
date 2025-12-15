@@ -16,6 +16,7 @@ The minimal crawler exposes its settings through environment variables. Values a
 | `DHT_CRAWLER_BOOTSTRAP_NODES` | `router.utorrent.com:6881,router.bittorrent.com:6881` | `router.utorrent.com:6881, router.bittorrent.com:6881, dht.transmissionbt.com:6881, dht.aelitis.com:6881, router.silotis.us:6881, dht.libtorrent.org:25401` | Comma-separated list of DHT routers used to seed the routing table. |
 | `DHT_CRAWLER_RESEED_BOOTSTRAP_NODES_INTERVAL` | `10m` | `1m` | How often the crawler re-contacts bootstrap routers. |
 | `DHT_CRAWLER_SAVE_TORRENTS_ROOT` | `/data/torrents` | `./torrents` | Directory where fetched `.tfile` bundles are written. |
+| `DHT_CRAWLER_TFILE_MAX_TORRENTS_PER_FILE` | `50000` | `10000` | Rotate to a new `.tfile` after this many torrents have been written. |
 | `DHT_CRAWLER_REDIS_URL` | `redis://1.2.3.4:6379/1` | `''` | Optional RedisBloom source of truth: if set, checks `BF.EXISTS bf:blobs <infohash>` before downloading and calls `BF.ADD bf:blobs <infohash>` after persisting. |
 | `METAINFO_REQUESTER_REQUEST_TIMEOUT` | `8s` | `6s` | Timeout for the BitTorrent metadata handshake/transfer. |
 | `METAINFO_REQUESTER_KEY_MUTEX_SIZE` | `2048` | `1000` | Size of the keyed limiter that throttles concurrent metadata requests per infohash. |

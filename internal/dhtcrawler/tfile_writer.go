@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	tfileMagic              = "TorrentBlobv1"
-	tfileMaxTorrentsPerFile = 50_000
+	tfileMagic = "TorrentBlobv1"
 )
 
 var (
@@ -31,6 +30,8 @@ type tfileWriter struct {
 
 	logger *zap.SugaredLogger
 
+	maxTorrentsPerFile int
+
 	tmpPath   string
 	finalPath string
 	f         *os.File
@@ -39,8 +40,11 @@ type tfileWriter struct {
 	writtenInFile int
 }
 
-func newTFileWriter(dir string, logger *zap.SugaredLogger) *tfileWriter {
-	return &tfileWriter{dir: dir, logger: logger}
+func newTFileWriter(dir string, maxTorrentsPerFile int, logger *zap.SugaredLogger) *tfileWriter {
+	if maxTorrentsPerFile <= 0 {
+		maxTorrentsPerFile = 10_000
+	}
+	return &tfileWriter{dir: dir, maxTorrentsPerFile: maxTorrentsPerFile, logger: logger}
 }
 
 func (w *tfileWriter) WriteRawMetadata(rawMetaInfo []byte) error {
@@ -76,7 +80,7 @@ func (w *tfileWriter) WriteRawMetadata(rawMetaInfo []byte) error {
 	}
 
 	w.writtenInFile++
-	if w.writtenInFile >= tfileMaxTorrentsPerFile {
+	if w.writtenInFile >= w.maxTorrentsPerFile {
 		if err := w.closeAndFinalizeLocked(); err != nil {
 			return err
 		}

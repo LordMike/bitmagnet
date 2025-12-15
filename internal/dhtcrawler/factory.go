@@ -81,7 +81,7 @@ func New(params Params) Result {
 						getPeers:                     concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](10*scalingFactor, 20*scalingFactor),
 						requestMetaInfo:              concurrency.NewBufferedConcurrentChannel[infoHashWithPeers](10*scalingFactor, 40*scalingFactor),
 						persistTorrents:              concurrency.NewBufferedConcurrentChannel[infoHashWithMetaInfo](1000, 1),
-						tfileWriter:                  newTFileWriter(saveTorrentsRoot, params.Logger.Named("dht_crawler").Named("tfile_writer")),
+						tfileWriter:                  newTFileWriter(saveTorrentsRoot, params.Config.TfileMaxTorrentsPerFile, params.Logger.Named("dht_crawler").Named("tfile_writer")),
 						persistDone:                  make(chan struct{}),
 						bloomFilter:                  bf,
 						ignoreHashes: &ignoreHashes{

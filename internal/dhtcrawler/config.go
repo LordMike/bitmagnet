@@ -13,6 +13,7 @@ type Config struct {
 	ReseedBootstrapNodesInterval time.Duration
 	SaveTorrentsRoot             string
 	RedisURL                     string
+	TfileMaxTorrentsPerFile      int
 }
 
 func NewDefaultConfig() Config {
@@ -22,6 +23,7 @@ func NewDefaultConfig() Config {
 		ReseedBootstrapNodesInterval: time.Minute,
 		SaveTorrentsRoot:             "./torrents",
 		RedisURL:                     "",
+		TfileMaxTorrentsPerFile:      10_000,
 	}
 }
 
