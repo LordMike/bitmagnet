@@ -23,8 +23,10 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 
 				infoHashStr := r.infoHash.String()
 				if c.shouldSkipMetadataDownload(r.infoHash) {
+					c.logger.Debugw("skipping hash due to bloomfilter", "infoHash", infoHashStr)
 					continue
 				}
+				c.logger.Debugw("downloading hash", "infoHash", infoHashStr)
 
 				select {
 				case <-ctx.Done():

@@ -91,6 +91,15 @@ func (w *tfileWriter) Close() error {
 	return w.closeAndFinalizeLocked()
 }
 
+func (w *tfileWriter) Flush() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.f == nil {
+		return nil
+	}
+	return w.w.Flush()
+}
+
 func (w *tfileWriter) closeAndFinalizeLocked() error {
 	if w.f == nil {
 		return nil

@@ -50,6 +50,21 @@ func New(params Params) Result {
 					} else {
 						saveTorrentsRoot = absRoot
 					}
+
+					var bf bloomFilter
+					if params.Config.RedisURL != "" {
+						rbf, err := newRedisBloomFilter(params.Config.RedisURL)
+						if err != nil {
+							return err
+						}
+						pingCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+						defer cancel()
+						if err := rbf.client.Ping(pingCtx).Err(); err != nil {
+							_ = rbf.Close()
+							return err
+						}
+						bf = rbf
+					}
 					c = crawler{
 						kTable:                       params.KTable,
 						client:                       cl,
@@ -68,6 +83,7 @@ func New(params Params) Result {
 						persistTorrents:              concurrency.NewBufferedConcurrentChannel[infoHashWithMetaInfo](1000, 1),
 						tfileWriter:                  newTFileWriter(saveTorrentsRoot, params.Logger.Named("dht_crawler").Named("tfile_writer")),
 						persistDone:                  make(chan struct{}),
+						bloomFilter:                  bf,
 						ignoreHashes: &ignoreHashes{
 							bloom: boom.NewStableBloomFilter(10_000_000, 2, 0.001),
 						},

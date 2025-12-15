@@ -12,6 +12,7 @@ type Config struct {
 	BootstrapNodes               []string
 	ReseedBootstrapNodesInterval time.Duration
 	SaveTorrentsRoot             string
+	RedisURL                     string
 }
 
 func NewDefaultConfig() Config {
@@ -20,6 +21,7 @@ func NewDefaultConfig() Config {
 		BootstrapNodes:               defaultBootstrapNodes,
 		ReseedBootstrapNodesInterval: time.Minute,
 		SaveTorrentsRoot:             "./torrents",
+		RedisURL:                     "",
 	}
 }
 
